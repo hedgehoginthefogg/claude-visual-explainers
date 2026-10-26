@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The rice and the chessboard – explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F1F4EF; --surface: #E2EAE2; --line: #C3D2C6; --text: #13302A; --muted: #4B665D;
+  --accent: #9A6512; --hot: #C0442A; --board-dark: #3F6B5E; --board-light: #B6CDBD;
+  --grain: #FFFDF6; --grain-edge: rgba(90,75,40,.5); --frame: #25473E; --half2: #D9A13A;
+  --serif: "Instrument Serif", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F2621; --surface: #16332C; --line: #2A4A41; --text: #F2EFE4; --muted: #A7C2AE;
+    --accent: #F2B233; --hot: #EE6A4C; --board-dark: #2B5246; --board-light: #9FBBA7;
+    --grain: #FBF6E6; --grain-edge: rgba(110,95,60,.45); --frame: #18362F; --half2: #F2B233; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F2621; --surface: #16332C; --line: #2A4A41; --text: #F2EFE4; --muted: #A7C2AE;
+  --accent: #F2B233; --hot: #EE6A4C; --board-dark: #2B5246; --board-light: #9FBBA7;
+  --grain: #FBF6E6; --grain-edge: rgba(110,95,60,.45); --frame: #18362F; --half2: #F2B233; color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 17px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px 20px 56px; }
+h1, h2 { font-family: var(--serif); font-weight: 400; margin: 0; line-height: 1.1; }
+h1 { font-size: clamp(2.3rem, 6vw, 3.6rem); }
+h2 { font-size: clamp(1.6rem, 3.6vw, 2.1rem); margin-bottom: 10px; }
+.lede { color: var(--muted); max-width: 62ch; margin: 10px 0 0; font-size: 1.05rem; }
+.demo { margin-top: 14px; font-size: .92rem; color: var(--muted); border-left: 3px solid var(--hot); padding: 4px 0 4px 12px; max-width: 70ch; }
+.concept p { max-width: 68ch; margin: 0 0 12px; }
+.concept p:last-child { margin-bottom: 0; }
+.concept strong { color: var(--accent); font-weight: 600; }
+.examples { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); margin-top: 14px; }
+@media (min-width: 760px) { .examples { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.ex { border-top: 1px solid var(--line); padding-top: 12px; }
+.ex canvas { height: 110px; }
+.ex p { margin: 8px 0 0; }
+.ex .axis { font-size: .85rem; color: var(--muted); margin: 2px 0 0; }
+.rate { margin-top: 22px; }
+.rate label { display: block; font-weight: 500; margin-bottom: 6px; }
+.rate output { display: block; font-family: var(--serif); font-size: 1.4rem; line-height: 1.3; margin-top: 8px; }
+.rate output b { font-family: var(--sans); color: var(--accent); font-size: 1.15rem; }
+.closing { font-family: var(--serif); font-style: italic; font-size: 1.45rem; line-height: 1.3; margin: 22px 0 0; max-width: 60ch; }
+section { margin-top: 36px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+.predict label { display: block; font-family: var(--serif); font-size: 1.45rem; line-height: 1.25; margin-bottom: 12px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+input[type=number] { width: 6.5em; font: 500 1.05rem var(--sans); padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+button { font: 500 1rem var(--sans); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 16px; cursor: pointer; min-height: 44px; }
+button.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+button:hover { border-color: var(--muted); }
+:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
+.note { color: var(--muted); font-size: .95rem; margin: 10px 0 0; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 28px; }
+@media (min-width: 900px) { .layout { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: start; } }
+.board-wrap { background: var(--frame); padding: 12px; border-radius: 6px; max-width: 580px; width: 100%; }
+canvas { display: block; width: 100%; }
+#board { aspect-ratio: 1 / 1; }
+.controls { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+.controls .play { grid-column: 1 / -1; justify-self: start; }
+input[type=range] { width: 100%; accent-color: var(--hot); min-height: 44px; }
+.sqlabel { font-family: var(--serif); font-size: clamp(2.6rem, 7vw, 3.6rem); line-height: 1; margin: 18px 0 14px; }
+dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+dl div { border-top: 1px solid var(--line); padding-top: 10px; }
+dt { color: var(--muted); font-size: .92rem; }
+dd { margin: 2px 0 0; font-weight: 600; font-size: 1.15rem; color: var(--accent); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.insight { font-family: var(--serif); font-style: italic; font-size: 1.35rem; line-height: 1.3; margin: 18px 0 0; }
+.result { margin-top: 14px; padding: 12px 14px; border-left: 4px solid var(--hot); background: var(--surface); border-radius: 0 10px 10px 0; }
+.result[hidden] { display: none; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.seg span { display: block; padding: 9px 16px; font-weight: 500; min-height: 44px; line-height: 26px; }
+.seg input:checked + span { background: var(--text); color: var(--bg); }
+.seg input:focus-visible + span { outline: 3px solid var(--hot); outline-offset: -3px; }
+.chart-box { margin-top: 14px; }
+#chart { height: 280px; }
+.assume { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 760px) { .assume { grid-template-columns: 1fr 1fr; } }
+.assume label { display: block; font-weight: 500; margin-bottom: 6px; }
+select { width: 100%; font: 400 1rem var(--sans); padding: 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-height: 44px; }
+.big-answer { font-family: var(--serif); font-size: 1.5rem; line-height: 1.3; margin: 16px 0 0; }
+.big-answer b { font-family: var(--sans); font-weight: 600; color: var(--accent); font-size: 1.2rem; }
+footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--line); padding-top: 14px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>The rice and the chessboard</h1>
+    <p class="demo">A demo of what educators can make with Claude. The rice and chessboard story is an example topic, and the content is quick and unchecked.</p>
+  </header>
+
+  <section class="concept card" aria-labelledby="concept-h">
+    <h2 id="concept-h">The idea: exponential growth</h2>
+    <p>One grain on the first square, two on the second, four on the third: each square doubles the one before. That rule is an example of <strong>exponential growth</strong>.</p>
+    <p>Most things we count grow by adding: one more, then one more again. Exponential growth multiplies instead. Something grows by the same proportion at every step, so the bigger it gets, the faster it grows.</p>
+    <p>At first the numbers look tiny, which is exactly why exponential growth is so easy to underestimate. Because each step doubles what is already there, every square holds one more grain than all the squares before it combined.</p>
+    <p>For comparison, if each square simply added one more grain than the last (1, 2, 3, 4 and so on), the whole board would hold just 2,080 grains, about 52 grams of rice.</p>
+    <p>Move through the board at your own pace and watch what the rule does.</p>
+  </section>
+
+  <section class="predict card" aria-labelledby="guess-label">
+    <label id="guess-label" for="guess">Before you start: on which square do you think the total rice will pass a full year of the world&rsquo;s rice harvest?</label>
+    <div class="row">
+      <input id="guess" type="number" min="1" max="64" inputmode="numeric" placeholder="1–64">
+      <button id="lock" class="primary" type="button">Lock in guess</button>
+    </div>
+    <p class="note" id="guess-note">Your guess stays on this page only.</p>
+  </section>
+
+  <div class="layout">
+    <div>
+      <div class="board-wrap"><canvas id="board" role="img" aria-label="Chessboard showing rice on each square filled so far"></canvas></div>
+    </div>
+    <div>
+      <div class="controls">
+        <button id="prev" type="button" aria-label="Previous square">&minus;</button>
+        <div>
+          <label class="sr" for="square">Square</label>
+          <input id="square" type="range" min="1" max="64" value="1" step="1">
+        </div>
+        <button id="next" type="button" aria-label="Next square">+</button>
+        <button id="play" class="play" type="button" aria-pressed="false">Play</button>
+      </div>
+      <p class="sqlabel" id="sqlabel">Square 1</p>
+      <p class="insight" id="insight"></p>
+      <div class="result" id="result" hidden></div>
+      <p class="sr" id="announce" aria-live="polite"></p>
+      <dl>
+        <div><dt>Grains on this square</dt><dd id="on">1</dd></div>
+        <div><dt>Grains in total so far</dt><dd id="total">1</dd></div>
+        <div><dt>Weight of the total</dt><dd id="mass">25 mg</dd></div>
+        <div><dt>Roughly the same as</dt><dd id="compare">a single grain</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <section aria-labelledby="chart-h">
+    <h2 id="chart-h">Grains on each square</h2>
+    <div class="seg" role="radiogroup" aria-label="Chart scale">
+      <label><input type="radio" name="scale" value="linear" checked><span>Linear scale</span></label>
+      <label><input type="radio" name="scale" value="log"><span>Logarithmic scale</span></label>
+    </div>
+    <div class="chart-box"><canvas id="chart" role="img" aria-label="Bar chart of grains on each square up to the current square"></canvas></div>
+    <p class="note" id="chart-note"></p>
+  </section>
+
+  <section aria-labelledby="why-h">
+    <h2 id="why-h">Why it matters</h2>
+    <p style="max-width:68ch;margin:0">The rice doubles on every square, but anything that grows by a fixed percentage doubles at a fixed interval too. Savings, debt and the spread of an infection all follow the same pattern.</p>
+    <div class="examples">
+      <div class="ex"><canvas id="ex0" role="img" aria-label="Curve of savings growing at 7% a year over 40 years, doubling about every 10 years"></canvas><p class="axis">Over 40 years</p><p>Savings at 7% a year double in about 10 years.</p></div>
+      <div class="ex"><canvas id="ex1" role="img" aria-label="Curve of a debt growing at 20% a year over 16 years, doubling about every 3.8 years"></canvas><p class="axis">Over 16 years</p><p>A debt at 20% a year doubles in under 4 years.</p></div>
+      <div class="ex"><canvas id="ex2" role="img" aria-label="Curve of infections doubling every 3 days over 30 days, ten doublings in total"></canvas><p class="axis">Over 30 days</p><p>Infections doubling every 3 days grow about a thousandfold in a month.</p></div>
+    </div>
+    <p class="note">Each dot marks a doubling. The dots are evenly spaced because the doubling time never changes.</p>
+    <div class="rate card">
+      <label for="rate">Try a growth rate: <span id="rate-out">7</span>% per period</label>
+      <input id="rate" type="range" min="1" max="50" step="1" value="7">
+      <output id="rate-result" for="rate" aria-live="polite"></output>
+      <p class="note">A period can be a year, a day or any other step. A handy shortcut, the rule of 70, estimates the doubling time as 70 divided by the percentage.</p>
+    </div>
+    <p class="closing">Exponential growth looks harmless at first. That is what makes it so easy to underestimate.</p>
+  </section>
+
+  <section class="card" aria-labelledby="assume-h">
+    <h2 id="assume-h">Change the assumptions</h2>
+    <p class="note" style="margin-top:0">The grain counts are exact. The weights depend on how heavy a grain of rice is, so try changing it.</p>
+    <div class="assume" style="margin-top:14px">
+      <div>
+        <label for="mg">Weight of one grain: <span id="mg-out">25</span> mg</label>
+        <input id="mg" type="range" min="15" max="35" step="1" value="25">
+        <p class="note">Real grains vary, roughly 20 to 30 mg.</p>
+      </div>
+      <div>
+        <p style="font-weight:500;margin:0 0 6px">World rice harvest per year</p>
+        <p style="margin:0">About 553 million tonnes of milled rice, the FAO&rsquo;s forecast for 2026/27 (September 2026).</p>
+      </div>
+    </div>
+    <p class="big-answer" id="answer"></p>
+  </section>
+
+  <footer>
+    <p style="margin:0 0 8px">The story is a legend, told in many versions. Grain counts follow exactly from doubling; weights and harvest figures are estimates. This explorer accompanies a short video and a text version of it, which use the same figures.</p>
+    <p style="margin:0 0 8px">Made in a Claude chat by Claude Opus 5.5. Directed by Steven Williams.</p>
+    <p style="margin:0">The controls should work with a keyboard or screen reader. If you find any problems, please contact Steven Williams at <a href="mailto:s.williams10@lse.ac.uk">s.williams10@lse.ac.uk</a>.</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const state = { n: 1, scale: 'linear', mg: 25, harvest: 553.1e6, guess: null, playing: null, rate: 7 };
+  const on = n => 2n ** BigInt(n - 1);
+  const total = n => 2n ** BigInt(n) - 1n;
+  const big = b => b.toLocaleString('en-GB');
+  const tonnes = n => Number(total(n)) * state.mg * 1e-9;
+  const crossing = () => { for (let n = 1; n <= 64; n++) if (tonnes(n) >= state.harvest) return n; return null; };
+  const sig = x => x >= 100 ? Math.round(x).toLocaleString('en-GB') : x >= 10 ? x.toFixed(0) : x.toFixed(1);
+
+  function fmtMass(t) {
+    const g = t * 1e6;
+    if (g < 1) return `${sig(g * 1000)} mg`;
+    if (g < 1000) return `${sig(g)} g`;
+    if (t < 1) return `${sig(g / 1000)} kg`;
+    if (t < 1e6) return `${Math.round(t).toLocaleString('en-GB')} tonnes`;
+    if (t < 1e9) return `${(t / 1e6).toFixed(1)} million tonnes`;
+    return `${(t / 1e9).toFixed(1)} billion tonnes`;
+  }
+  function compare(t, n) {
+    const g = t * 1e6, H = state.harvest;
+    if (n === 1) return 'A single grain';
+    if (g < 1) return 'A pinch of rice';
+    if (g < 15) return 'Less than a tablespoon';
+    if (g < 1000) return `About ${sig(g / 75)} servings (75 g each)`;
+    if (t < 1) return `About ${sig(g / 1000)} 1 kg bags from the shop`;
+    if (t < 27) return `About ${sig(t)} tonnes, less than one lorry load`;
+    if (t < 1e5) return `About ${Math.round(t / 27).toLocaleString('en-GB')} lorry loads (27 tonnes each)`;
+    if (t < H) { const p = t / H * 100; return `${p < 1 ? p.toFixed(2) : p.toFixed(0)}% of a year's world rice harvest`; }
+    const y = t / H; return `About ${y < 10 ? y.toFixed(1) : y < 100 ? Math.round(y) : (Math.round(y / 10) * 10).toLocaleString('en-GB')} years of the world's rice harvest`;
+  }
+
+  // ---------- drawing ----------
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+  const board = $('board'), bctx = board.getContext('2d');
+  const chart = $('chart'), cctx = chart.getContext('2d');
+  let tex = {}, texKey = '';
+
+  function fit(cv, ctx) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return [w, h, dpr];
+  }
+  function grainTexture(n, sq, dpr) {
+    const c = document.createElement('canvas'); c.width = c.height = Math.ceil(sq * dpr);
+    const x = c.getContext('2d'); x.scale(dpr, dpr);
+    const k = sq / 104, cap = Math.max(40, Math.round(340 * k * k)), cnt = Math.min(cap, 2 ** (n - 1));
+    const fill = css('--grain'), edge = css('--grain-edge');
+    for (let i = 0; i < cnt; i++) {
+      const s = n * 1000 + i;
+      const gx = cnt === 1 ? sq / 2 : (0.1 + hash(s) * 0.8) * sq, gy = cnt === 1 ? sq / 2 : (0.1 + hash(s + 0.5) * 0.62) * sq;
+      x.save(); x.translate(gx, gy); x.rotate(cnt === 1 ? 0.5 : hash(s + 0.25) * Math.PI * 2);
+      x.beginPath(); x.ellipse(0, 0, 6.4 * k * (n === 1 ? 1.3 : 1), 2.4 * k * (n === 1 ? 1.3 : 1), 0, 0, Math.PI * 2);
+      x.fillStyle = fill; x.fill(); x.strokeStyle = edge; x.lineWidth = Math.max(0.5, 0.8 * k); x.stroke(); x.restore();
+    }
+    return c;
+  }
+  function shortCount(v) {
+    if (v < 1e4) return v.toLocaleString('en-GB');
+    if (v < 1e6) return Math.round(v / 1e3) + 'k';
+    if (v < 1e9) return (v / 1e6 < 10 ? (v / 1e6).toFixed(1) : Math.round(v / 1e6)) + 'm';
+    return (v / 1e9).toFixed(1) + 'bn';
+  }
+  function drawBoard() {
+    const [S, , dpr] = fit(board, bctx), sq = S / 8, key = `${Math.round(sq * dpr)}|${css('--grain')}`;
+    if (key !== texKey) { tex = {}; texKey = key; }
+    const dark = css('--board-dark'), light = css('--board-light'), half2 = css('--half2'), hot = css('--hot'), bg = css('--frame');
+    for (let n = 1; n <= 64; n++) {
+      const i = n - 1, r = Math.floor(i / 8), c = i % 8, x = c * sq, y = (7 - r) * sq;
+      bctx.fillStyle = (r + c) % 2 === 0 ? dark : light; bctx.fillRect(x, y, sq, sq);
+      if (n > state.n) continue;
+      if (n <= 32) { tex[n] = tex[n] || grainTexture(n, sq, dpr); bctx.drawImage(tex[n], x, y, sq, sq); }
+      else { bctx.globalAlpha = 0.35 + 0.65 * (n - 33) / 31; bctx.fillStyle = half2; bctx.fillRect(x, y, sq, sq); bctx.globalAlpha = 1; }
+      // label
+      const fs = Math.max(8.5, sq * 0.18), ph = fs * 1.5, pw = sq * 0.74;
+      bctx.fillStyle = bg; bctx.globalAlpha = 0.82;
+      bctx.beginPath(); bctx.roundRect(x + (sq - pw) / 2, y + sq - ph - sq * 0.06, pw, ph, ph / 2); bctx.fill(); bctx.globalAlpha = 1;
+      bctx.fillStyle = '#F2EFE4'; bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
+      const ly = y + sq - ph / 2 - sq * 0.06;
+      if (n <= 32) { bctx.font = `500 ${fs}px ${css('--sans')}`; bctx.fillText(shortCount(2 ** (n - 1)), x + sq / 2, ly + 0.5); }
+      else {
+        bctx.font = `500 ${fs}px ${css('--sans')}`; const bw = bctx.measureText('2').width;
+        bctx.font = `500 ${fs * 0.65}px ${css('--sans')}`; const ew = bctx.measureText(String(n - 1)).width;
+        const x0 = x + sq / 2 - (bw + ew) / 2; bctx.textAlign = 'left';
+        bctx.font = `500 ${fs}px ${css('--sans')}`; bctx.fillText('2', x0, ly + 0.5);
+        bctx.font = `500 ${fs * 0.65}px ${css('--sans')}`; bctx.fillText(String(n - 1), x0 + bw + 1, ly - fs * 0.35);
+      }
+      if (n === state.n) { bctx.strokeStyle = hot; bctx.lineWidth = Math.max(2.5, sq * 0.05); bctx.strokeRect(x + bctx.lineWidth / 2, y + bctx.lineWidth / 2, sq - bctx.lineWidth, sq - bctx.lineWidth); }
+    }
+    board.setAttribute('aria-label', `Chessboard with rice on squares 1 to ${state.n}. Square ${state.n} holds ${big(on(state.n))} grains.`);
+  }
+  function drawChart() {
+    const [w, h] = fit(chart, cctx), padL = 8, padR = 8, top = 34, bottom = 30, ch = h - top - bottom, cw = w - padL - padR, bw = cw / 64;
+    cctx.clearRect(0, 0, w, h);
+    const text = css('--text'), muted = css('--muted'), line = css('--line'), acc = css('--accent'), hot = css('--hot'), sans = css('--sans');
+    cctx.font = `400 12px ${sans}`; cctx.textBaseline = 'alphabetic';
+    if (state.scale === 'log') {
+      [[0, '1'], [Math.log2(1e3), 'thousand'], [Math.log2(1e6), 'million'], [Math.log2(1e9), 'billion'], [Math.log2(1e12), 'trillion'], [Math.log2(1e15), 'quadrillion'], [Math.log2(1e18), 'quintillion']].forEach(([l, lab]) => {
+        const y = top + ch - ch * l / 63; cctx.strokeStyle = line; cctx.lineWidth = 1; cctx.beginPath(); cctx.moveTo(padL, y); cctx.lineTo(w - padR, y); cctx.stroke();
+        cctx.fillStyle = muted; cctx.textAlign = 'left'; cctx.fillText(lab, padL + 2, y - 4);
+      });
+    }
+    const max = 2 ** (state.n - 1);
+    for (let i = 1; i <= state.n; i++) {
+      const hh = state.scale === 'log' ? ch * (i - 1) / 63 : ch * 2 ** (i - 1) / max;
+      cctx.fillStyle = i === state.n ? hot : i <= 32 ? text : acc;
+      cctx.globalAlpha = i === state.n ? 1 : 0.85;
+      cctx.fillRect(padL + (i - 1) * bw + bw * 0.15, top + ch - Math.max(hh, 1), bw * 0.7, Math.max(hh, 1));
+    }
+    cctx.globalAlpha = 1;
+    cctx.strokeStyle = muted; cctx.beginPath(); cctx.moveTo(padL, top + ch + 0.5); cctx.lineTo(w - padR, top + ch + 0.5); cctx.stroke();
+    cctx.fillStyle = muted; cctx.font = `400 12px ${sans}`;
+    cctx.textAlign = 'left'; cctx.fillText('Square 1', padL, h - 8); cctx.textAlign = 'right'; cctx.fillText('Square 64', w - padR, h - 8);
+    if (state.scale === 'linear') { cctx.textAlign = 'left'; cctx.fillStyle = text; cctx.font = `500 13px ${sans}`; cctx.fillText(`Tallest bar: ${big(on(state.n))} grains`, padL, 16); }
+    chart.setAttribute('aria-label', `Bar chart on a ${state.scale === 'log' ? 'logarithmic' : 'linear'} scale of grains on squares 1 to ${state.n}.`);
+  }
+
+  // ---------- text ----------
+  function update(announce = true) {
+    const n = state.n, t = tonnes(n);
+    $('square').value = n; $('sqlabel').textContent = `Square ${n}`;
+    $('on').textContent = big(on(n)); $('total').textContent = big(total(n));
+    $('mass').textContent = fmtMass(t); $('compare').textContent = compare(t, n);
+    let msg = n === 1 ? 'One grain. The rule never changes: every square doubles the one before.'
+      : `Square ${n} holds one more grain than all ${n - 1} squares before it combined.`;
+    if (n === 32) msg = 'Halfway. Large, but still imaginable. Now keep going.';
+    if (n === 64) msg = 'The last square holds more rice than the other 63 put together.';
+    $('insight').textContent = msg;
+    const C = crossing(), res = $('result');
+    if (state.guess && C && n >= C) {
+      const d = state.guess - C;
+      res.hidden = false;
+      res.textContent = `You guessed square ${state.guess}. The total passes a full year of the world's harvest at square ${C}` +
+        (d === 0 ? ' – exactly right.' : `, so you were ${Math.abs(d)} ${Math.abs(d) === 1 ? 'square' : 'squares'} ${d > 0 ? 'too late' : 'too early'}.`);
+    } else res.hidden = true;
+    $('chart-note').textContent = state.scale === 'linear'
+      ? 'On a linear scale the tallest bar always fills the chart, so every earlier square shrinks towards nothing as you move on.'
+      : 'On a logarithmic scale each doubling is the same step up, so steady doubling becomes a straight line.';
+    const all = tonnes(64) / state.harvest;
+    $('answer').innerHTML = `With these assumptions, the total passes a year's world harvest at <b>square ${C}</b>, and the whole board comes to about <b>${(Math.round(all / 10) * 10).toLocaleString('en-GB')} years</b> of harvest. Try the extremes: the years change a lot, the square hardly moves.`;
+    drawBoard(); drawChart();
+    if (announce) queueAnnounce(n, t, msg, res.hidden ? '' : res.textContent);
+  }
+  const setN = n => { state.n = Math.max(1, Math.min(64, n)); update(); };
+  // announce once the square stops changing, so dragging the slider is not a torrent of speech
+  let at;
+  function queueAnnounce(n, t, msg, result) {
+    clearTimeout(at);
+    if (state.playing && n % 8 !== 0 && n !== 64) return;
+    at = setTimeout(() => { $('announce').textContent = `Square ${n}: ${big(on(n))} grains on this square, ${big(total(n))} in total, weighing ${fmtMass(t)}. ${msg} ${result}`; }, state.playing ? 0 : 700);
+  }
+
+  // ---------- why it matters: doubling curves and a growth-rate calculator ----------
+  const EX = [
+    { f: x => 1.07 ** x, span: 40, dbl: Math.log(2) / Math.log(1.07) },
+    { f: x => 1.2 ** x, span: 16, dbl: Math.log(2) / Math.log(1.2) },
+    { f: x => 2 ** (x / 3), span: 30, dbl: 3 },
+  ];
+  function drawExamples() {
+    EX.forEach((e, i) => {
+      const cv = $('ex' + i), ctx = cv.getContext('2d'), [w, h] = fit(cv, ctx), top = e.f(e.span), pad = 8;
+      ctx.clearRect(0, 0, w, h);
+      const X = x => pad + (w - 2 * pad) * x / e.span, Y = v => h - pad - (h - 2 * pad) * (v - 1) / (top - 1);
+      ctx.strokeStyle = css('--line'); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, h - pad); ctx.lineTo(w - pad, h - pad); ctx.stroke();
+      ctx.strokeStyle = css('--accent'); ctx.lineWidth = 3; ctx.beginPath();
+      for (let k = 0; k <= 100; k++) { const x = e.span * k / 100; k ? ctx.lineTo(X(x), Y(e.f(x))) : ctx.moveTo(X(x), Y(e.f(x))); }
+      ctx.stroke(); ctx.fillStyle = css('--hot');
+      for (let d = 1; d * e.dbl <= e.span + 1e-9; d++) { const x = d * e.dbl; ctx.beginPath(); ctx.arc(X(x), Y(e.f(x)), 4.5, 0, Math.PI * 2); ctx.fill(); }
+    });
+  }
+  function updateRate() {
+    const r = state.rate, dt = Math.log(2) / Math.log(1 + r / 100), f = x => x < 10 ? x.toFixed(1) : Math.round(x).toLocaleString('en-GB');
+    $('rate-out').textContent = r;
+    $('rate-result').innerHTML = `Doubles about every <b>${f(dt)} periods</b> (rule of 70 estimate: ${f(70 / r)}). Ten doublings, about ${f(dt * 10)} periods, make it 1,024 times bigger.`;
+  }
+  $('rate').addEventListener('input', e => { state.rate = +e.target.value; updateRate(); });
+
+  // ---------- events ----------
+  $('square').addEventListener('input', e => setN(+e.target.value));
+  $('prev').addEventListener('click', () => setN(state.n - 1));
+  $('next').addEventListener('click', () => setN(state.n + 1));
+  function stop() { clearInterval(state.playing); state.playing = null; $('play').textContent = 'Play'; $('play').setAttribute('aria-pressed', 'false'); }
+  $('play').addEventListener('click', () => {
+    if (state.playing) return stop();
+    if (state.n >= 64) setN(1);
+    $('play').textContent = 'Pause'; $('play').setAttribute('aria-pressed', 'true');
+    state.playing = setInterval(() => { if (state.n >= 64) return stop(); setN(state.n + 1); }, 800);
+  });
+  $('lock').addEventListener('click', () => {
+    const g = Math.round(+$('guess').value);
+    if (!g || g < 1 || g > 64) { $('guess-note').textContent = 'Enter a square between 1 and 64.'; $('guess').focus(); return; }
+    state.guess = g; $('guess-note').textContent = `Guess locked in: square ${g}. Now move through the board.`; update(false);
+  });
+  document.querySelectorAll('input[name=scale]').forEach(r => r.addEventListener('change', e => { state.scale = e.target.value; update(false); }));
+  $('mg').addEventListener('input', e => { state.mg = +e.target.value; $('mg-out').textContent = state.mg; update(false); });
+  const redraw = () => { update(false); drawExamples(); };
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(redraw, 120); });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { texKey = ''; redraw(); });
+  new MutationObserver(() => { texKey = ''; redraw(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(redraw);
+  update(false); drawExamples(); updateRate();
+})();
+</script>
+</body>
+</html>
