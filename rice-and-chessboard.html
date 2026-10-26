@@ -10,7 +10,7 @@
 <style>
 :root {
   --bg: #F1F4EF; --surface: #E2EAE2; --line: #C3D2C6; --text: #13302A; --muted: #4B665D;
-  --accent: #9A6512; --hot: #C0442A; --board-dark: #3F6B5E; --board-light: #B6CDBD;
+  --accent: #8A5A0F; --hot: #C0442A; --board-dark: #3F6B5E; --board-light: #B6CDBD;
   --grain: #FFFDF6; --grain-edge: rgba(90,75,40,.5); --frame: #25473E; --half2: #D9A13A;
   --serif: "Instrument Serif", "Iowan Old Style", Georgia, "Times New Roman", serif;
   --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -94,6 +94,13 @@ select { width: 100%; font: 400 1rem var(--sans); padding: 10px; border-radius: 
 .big-answer { font-family: var(--serif); font-size: 1.5rem; line-height: 1.3; margin: 16px 0 0; }
 .big-answer b { font-family: var(--sans); font-weight: 600; color: var(--accent); font-size: 1.2rem; }
 footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1px solid var(--line); padding-top: 14px; }
+.chapters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.chapters button { font-size: .95rem; padding: 7px 12px; min-height: 40px; }
+.chapters button[aria-current="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+.group-label { font-size: .9rem; color: var(--muted); margin: 18px 0 0; }
+.pause-note { font-weight: 500; color: var(--text); margin: 10px 0 0; min-height: 1.5em; }
+p, dd, label, output { text-wrap: pretty; }
+h1, h2, .insight, .closing { text-wrap: balance; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
@@ -125,6 +132,7 @@ footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1p
   <div class="layout">
     <div>
       <div class="board-wrap"><canvas id="board" role="img" aria-label="Chessboard showing rice on each square filled so far"></canvas></div>
+      <p class="note">From square 33 there is too much rice to draw, so the squares are shaded gold, and each count is shown as a power of 2. The current square has a white outline and a red label.</p>
     </div>
     <div>
       <div class="controls">
@@ -136,6 +144,9 @@ footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1p
         <button id="next" type="button" aria-label="Next square">+</button>
         <button id="play" class="play" type="button" aria-pressed="false">Play</button>
       </div>
+      <p class="pause-note" id="pause-note" aria-live="polite"></p>
+      <p class="group-label" id="jump-l">Jump to</p>
+      <div class="chapters" id="chapters" role="group" aria-labelledby="jump-l"></div>
       <p class="sqlabel" id="sqlabel">Square 1</p>
       <p class="insight" id="insight"></p>
       <div class="result" id="result" hidden></div>
@@ -227,7 +238,7 @@ footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1p
     if (g < 1) return 'A pinch of rice';
     if (g < 15) return 'Less than a tablespoon';
     if (g < 1000) return `About ${sig(g / 75)} servings (75 g each)`;
-    if (t < 1) return `About ${sig(g / 1000)} 1 kg bags from the shop`;
+    if (t < 1) return `About ${sig(g / 1000)} bags of rice (1 kg each)`;
     if (t < 27) return `About ${sig(t)} tonnes, less than one lorry load`;
     if (t < 1e5) return `About ${Math.round(t / 27).toLocaleString('en-GB')} lorry loads (27 tonnes each)`;
     if (t < H) { const p = t / H * 100; return `${p < 1 ? p.toFixed(2) : p.toFixed(0)}% of a year's world rice harvest`; }
@@ -270,6 +281,8 @@ footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1p
     const [S, , dpr] = fit(board, bctx), sq = S / 8, key = `${Math.round(sq * dpr)}|${css('--grain')}`;
     if (key !== texKey) { tex = {}; texKey = key; }
     const dark = css('--board-dark'), light = css('--board-light'), half2 = css('--half2'), hot = css('--hot'), bg = css('--frame');
+    const lum = h => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+    const hotText = lum(hot) > 0.2 ? '#13302A' : '#FFFFFF';   // whichever gives the red label at least 4.5:1
     for (let n = 1; n <= 64; n++) {
       const i = n - 1, r = Math.floor(i / 8), c = i % 8, x = c * sq, y = (7 - r) * sq;
       bctx.fillStyle = (r + c) % 2 === 0 ? dark : light; bctx.fillRect(x, y, sq, sq);
@@ -278,9 +291,9 @@ footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1p
       else { bctx.globalAlpha = 0.35 + 0.65 * (n - 33) / 31; bctx.fillStyle = half2; bctx.fillRect(x, y, sq, sq); bctx.globalAlpha = 1; }
       // label
       const fs = Math.max(8.5, sq * 0.18), ph = fs * 1.5, pw = sq * 0.74;
-      bctx.fillStyle = bg; bctx.globalAlpha = 0.82;
+      bctx.fillStyle = n === state.n ? hot : bg; bctx.globalAlpha = n === state.n ? 1 : 0.82;
       bctx.beginPath(); bctx.roundRect(x + (sq - pw) / 2, y + sq - ph - sq * 0.06, pw, ph, ph / 2); bctx.fill(); bctx.globalAlpha = 1;
-      bctx.fillStyle = '#F2EFE4'; bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
+      bctx.fillStyle = n === state.n ? hotText : '#F2EFE4'; bctx.textAlign = 'center'; bctx.textBaseline = 'middle';
       const ly = y + sq - ph / 2 - sq * 0.06;
       if (n <= 32) { bctx.font = `500 ${fs}px ${css('--sans')}`; bctx.fillText(shortCount(2 ** (n - 1)), x + sq / 2, ly + 0.5); }
       else {
@@ -290,7 +303,11 @@ footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1p
         bctx.font = `500 ${fs}px ${css('--sans')}`; bctx.fillText('2', x0, ly + 0.5);
         bctx.font = `500 ${fs * 0.65}px ${css('--sans')}`; bctx.fillText(String(n - 1), x0 + bw + 1, ly - fs * 0.35);
       }
-      if (n === state.n) { bctx.strokeStyle = hot; bctx.lineWidth = Math.max(2.5, sq * 0.05); bctx.strokeRect(x + bctx.lineWidth / 2, y + bctx.lineWidth / 2, sq - bctx.lineWidth, sq - bctx.lineWidth); }
+      if (n === state.n) {
+        const lw = Math.max(3, sq * 0.06), iw = Math.max(1.5, lw * 0.5);
+        bctx.strokeStyle = '#FFFFFF'; bctx.lineWidth = lw; bctx.strokeRect(x + lw / 2, y + lw / 2, sq - lw, sq - lw);
+        bctx.strokeStyle = '#13302A'; bctx.lineWidth = iw; bctx.strokeRect(x + lw + iw / 2, y + lw + iw / 2, sq - 2 * lw - iw, sq - 2 * lw - iw);
+      }
     }
     board.setAttribute('aria-label', `Chessboard with rice on squares 1 to ${state.n}. Square ${state.n} holds ${big(on(state.n))} grains.`);
   }
@@ -327,8 +344,11 @@ footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1p
     $('on').textContent = big(on(n)); $('total').textContent = big(total(n));
     $('mass').textContent = fmtMass(t); $('compare').textContent = compare(t, n);
     let msg = n === 1 ? 'One grain. The rule never changes: every square doubles the one before.'
+      : n === 2 ? 'Square 2 holds one more grain than square 1.'
       : `Square ${n} holds one more grain than all ${n - 1} squares before it combined.`;
+    if (n === 20) msg = 'The total passes a million grains, and you are not yet a third of the way across the board.';
     if (n === 32) msg = 'Halfway. Large, but still imaginable. Now keep going.';
+    if (n === crossing() && n !== 64) msg = 'The total passes a full year of the world\u2019s rice harvest.';
     if (n === 64) msg = 'The last square holds more rice than the other 63 put together.';
     $('insight').textContent = msg;
     const C = crossing(), res = $('result');
@@ -341,9 +361,10 @@ footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1p
     $('chart-note').textContent = state.scale === 'linear'
       ? 'On a linear scale the tallest bar always fills the chart, so every earlier square shrinks towards nothing as you move on.'
       : 'On a logarithmic scale each doubling is the same step up, so steady doubling becomes a straight line.';
+    $('chart-note').textContent += ' Gold bars are the second half of the board, and the red bar is the current square.';
     const all = tonnes(64) / state.harvest;
     $('answer').innerHTML = `With these assumptions, the total passes a year's world harvest at <b>square ${C}</b>, and the whole board comes to about <b>${(Math.round(all / 10) * 10).toLocaleString('en-GB')} years</b> of harvest. Try the extremes: the years change a lot, the square hardly moves.`;
-    drawBoard(); drawChart();
+    drawBoard(); drawChart(); drawChapters();
     if (announce) queueAnnounce(n, t, msg, res.hidden ? '' : res.textContent);
   }
   const setN = n => { state.n = Math.max(1, Math.min(64, n)); update(); };
@@ -380,16 +401,34 @@ footer { margin-top: 44px; color: var(--muted); font-size: .9rem; border-top: 1p
   }
   $('rate').addEventListener('input', e => { state.rate = +e.target.value; updateRate(); });
 
+  // ---------- chapters ----------
+  const CHAPTERS = () => [[1, 'the first grain'], [20, 'a million grains'], [32, 'halfway'], [crossing(), 'a year\u2019s harvest'], [64, 'the last square']];
+  function drawChapters() {
+    const box = $('chapters'); box.innerHTML = '';
+    for (const [n, name] of CHAPTERS()) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = `Square ${n}: ${name}`;
+      b.setAttribute('aria-current', String(n === state.n));
+      b.addEventListener('click', () => { if (state.playing) stop(); $('pause-note').textContent = ''; setN(n); });
+      box.appendChild(b);
+    }
+  }
+  const isMilestone = n => CHAPTERS().some(([m]) => m === n) && n !== 1;
+
   // ---------- events ----------
-  $('square').addEventListener('input', e => setN(+e.target.value));
-  $('prev').addEventListener('click', () => setN(state.n - 1));
-  $('next').addEventListener('click', () => setN(state.n + 1));
+  $('square').addEventListener('input', e => { $('pause-note').textContent = ''; setN(+e.target.value); });
+  $('prev').addEventListener('click', () => { $('pause-note').textContent = ''; setN(state.n - 1); });
+  $('next').addEventListener('click', () => { $('pause-note').textContent = ''; setN(state.n + 1); });
   function stop() { clearInterval(state.playing); state.playing = null; $('play').textContent = 'Play'; $('play').setAttribute('aria-pressed', 'false'); }
   $('play').addEventListener('click', () => {
     if (state.playing) return stop();
     if (state.n >= 64) setN(1);
+    $('pause-note').textContent = '';
     $('play').textContent = 'Pause'; $('play').setAttribute('aria-pressed', 'true');
-    state.playing = setInterval(() => { if (state.n >= 64) return stop(); setN(state.n + 1); }, 800);
+    state.playing = setInterval(() => {
+      if (state.n >= 64) return stop();
+      setN(state.n + 1);
+      if (isMilestone(state.n)) { stop(); if (state.n < 64) $('pause-note').textContent = `Paused at square ${state.n}. When you're ready, press Play to carry on.`; }
+    }, 800);
   });
   $('lock').addEventListener('click', () => {
     const g = Math.round(+$('guess').value);

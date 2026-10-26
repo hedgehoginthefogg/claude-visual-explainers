@@ -30,6 +30,10 @@ h2 { font: 400 clamp(1.5rem, 3.5vw, 1.9rem)/1.15 var(--display); margin: 0 0 10p
 @media (min-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; } }
 .viewer { position: relative; border-radius: 12px; overflow: hidden; background: #A8B8C4; aspect-ratio: 4 / 3; }
 @media (min-width: 700px) { .viewer { aspect-ratio: 16 / 10; } }
+/* step by step: keep the model and the step text on screen together */
+.layout > div:first-child { container-type: inline-size; }
+.tour-mode .viewer { aspect-ratio: auto; height: clamp(220px, calc(100vh - 330px), 75cqw); height: clamp(220px, calc(100svh - 330px), 75cqw); }
+@media (min-width: 700px) { .tour-mode .viewer { height: clamp(220px, calc(100vh - 330px), 62.5cqw); height: clamp(220px, calc(100svh - 330px), 62.5cqw); } }
 .viewer canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .viewer:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
 .labels { position: absolute; inset: 0; pointer-events: none; }
@@ -48,7 +52,7 @@ h2 { font: 400 clamp(1.5rem, 3.5vw, 1.9rem)/1.15 var(--display); margin: 0 0 10p
 .hint { position: absolute; left: 12px; bottom: 12px; background: rgba(246,243,236,.92); color: #1F2328; font-size: 13px; padding: 5px 10px; border-radius: 8px; pointer-events: none; }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--serif); color: #1F2328; }
 .bar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-button.v, button.t { font: 500 15px var(--sans); color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; min-height: 44px; cursor: pointer; }
+button.v, button.t, button.z { font: 500 15px var(--sans); color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; min-height: 44px; cursor: pointer; }
 button.v[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
 button.t { display: inline-flex; align-items: center; gap: 8px; }
 button.t::before { content: ""; width: 34px; height: 20px; border-radius: 10px; background: var(--line); box-shadow: inset 0 0 0 2px var(--line); flex: none; transition: background .15s; }
@@ -70,6 +74,26 @@ section { margin-top: 36px; }
 .try p { margin: 0; font-family: var(--serif); }
 .notes p, .notes li { font-family: var(--serif); max-width: 72ch; }
 footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px; color: var(--muted); font-size: .9rem; }
+.mode { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+button.m { font: 500 15px var(--sans); color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; min-height: 44px; cursor: pointer; }
+button.m[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+.tour { margin-top: 12px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; padding: 14px 16px; }
+.tour[hidden], .free[hidden], .steps-wrap[hidden], .free-info[hidden] { display: none; }
+.tour .count { font-size: .85rem; color: var(--muted); margin: 0; }
+.tour h2 { font-size: 1.45rem; margin: 2px 0 4px; }
+.tour p.text { font-family: var(--serif); margin: 0; max-width: 66ch; }
+.tour .nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tour .nav button, .try button { font: 500 15px var(--sans); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; min-height: 44px; cursor: pointer; }
+.tour .nav button.next { background: var(--text); color: var(--bg); border-color: var(--text); }
+.tour .nav button:disabled { opacity: .55; cursor: default; }
+.steps { list-style: none; padding: 0; margin: 10px 0 0; counter-reset: st; }
+.steps li { counter-increment: st; }
+.steps button { display: flex; gap: 10px; width: 100%; text-align: left; font: 400 15px var(--sans); color: var(--text); background: transparent; border: 0; border-radius: 8px; padding: 7px 8px; min-height: 40px; cursor: pointer; }
+.steps button::before { content: counter(st); min-width: 1.6em; color: var(--muted); font-variant-numeric: tabular-nums; }
+.steps button[aria-current="step"] { background: var(--bg); box-shadow: inset 3px 0 0 var(--accent); font-weight: 500; }
+.try button { margin-top: 10px; }
+button.z:disabled { opacity: .55; cursor: default; }
+em, i, .serif-it { font-variant-ligatures: no-common-ligatures no-discretionary-ligatures no-historical-ligatures; font-feature-settings: "liga" 0, "dlig" 0, "hlig" 0; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
@@ -77,18 +101,36 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
 <div class="wrap">
   <header>
     <h1>The panopticon: explore the model</h1>
-    <p class="lede">Jeremy Bentham&rsquo;s inspection house, as a 3D model you can turn, cut open and step inside. Drag to look around, and tap a label to learn what each part does.</p>
+    <p class="lede">Jeremy Bentham&rsquo;s inspection house, as a 3D model you can turn, cut open and step inside. Go through it step by step, or explore it freely, and tap a label to learn what each part does.</p>
     <p class="demo">A demo of what educators can make with Claude. The panopticon is an example topic, and the content is quick and unchecked.</p>
   </header>
+
+  <div class="mode" role="group" aria-label="How to use the model">
+    <button class="m" id="m-tour" aria-pressed="true">Step by step</button>
+    <button class="m" id="m-free" aria-pressed="false">Explore freely</button>
+  </div>
 
   <div class="layout">
     <div>
       <div class="viewer" id="viewer">
         <div class="loading" id="loading">Loading the model&hellip;</div>
         <div class="labels" id="labels"><svg class="leaders" id="leaders" aria-hidden="true"></svg></div>
-        <div class="hint" id="hint">Drag to turn &middot; pinch or scroll to zoom</div>
+        <div class="hint" id="hint">Drag to turn, or use the buttons below</div>
       </div>
       <div class="mini" id="mini" hidden aria-live="polite"><h3><span id="mini-h"></span><button type="button" id="mini-x" aria-label="Close description">Close</button></h3><p id="mini-p"></p></div>
+      <div class="tour" id="tour">
+        <p class="count" id="tour-count">Step 1 of 11</p>
+        <div aria-live="polite"><h2 id="tour-h">An inspection house</h2><p class="text" id="tour-p"></p></div>
+        <div class="nav"><button type="button" id="prev">Previous</button><button type="button" class="next" id="next">Next</button></div>
+      </div>
+      <p class="group-label" id="turn-l">Turn and zoom</p>
+      <div class="bar" role="group" aria-labelledby="turn-l">
+        <button class="z" id="z-left">Turn left</button>
+        <button class="z" id="z-right">Turn right</button>
+        <button class="z" id="z-in">Zoom in</button>
+        <button class="z" id="z-out">Zoom out</button>
+      </div>
+      <div class="free" id="free" hidden>
       <p class="group-label" id="views-l">Viewpoint</p>
       <div class="bar" role="group" aria-labelledby="views-l">
         <button class="v" data-view="overview" aria-pressed="true">Overview</button>
@@ -104,22 +146,31 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
         <button class="t" id="t-lines" aria-pressed="false">Lines of sight</button>
         <button class="t" id="t-labels" aria-pressed="true">Labels</button>
       </div>
+      </div>
     </div>
 
-    <aside class="panel" aria-labelledby="info-h">
+    <aside class="panel" aria-label="Steps and parts of the building">
+      <div class="steps-wrap" id="steps-wrap">
+        <h2 id="steps-h">Steps</h2>
+        <p>Jump to any step, or press Next to build the model one part at a time.</p>
+        <ol class="steps" id="steps" aria-labelledby="steps-h"></ol>
+      </div>
+      <div class="free-info" id="free-info" hidden>
       <h2 id="info-h">An inspection house</h2>
       <div id="info-body"><p>In letters written in 1787, Bentham described a circular building: cells in tiers around the outside, an inspection tower at the centre, and an open gap between them.</p><p>Choose a part below, or tap a label on the model.</p></div>
       <ul class="parts" id="parts" aria-label="Parts of the building"></ul>
+      </div>
       <p class="status" id="status" aria-live="polite">Overview of the whole building.</p>
     </aside>
   </div>
 
   <section aria-labelledby="try-h">
     <h2 id="try-h">Things to try</h2>
+    <p style="max-width:66ch;margin:0 0 14px">These use the controls in <em>Explore freely</em>. Choose <em>Explore freely</em> first, or press <em>Set this up</em> to go straight there.</p>
     <div class="tries">
-      <div class="try"><h3>Is anyone watching?</h3><p>Choose <em>From a cell</em>, then switch <em>Inspector in the tower</em> on and off. Does anything you can see change?</p></div>
-      <div class="try"><h3>Swap places</h3><p>Choose <em>From the tower</em> and look around. How many people can you see, and how clearly?</p></div>
-      <div class="try"><h3>Check the trick</h3><p>Choose <em>Cutaway</em> and switch on <em>See inside the tower</em>. What does the design hide from the cells, and how?</p></div>
+      <div class="try"><h3>Is anyone watching?</h3><p>Choose <em>From a cell</em>, then switch <em>Inspector in the tower</em> on and off. Does anything you can see change?</p><button type="button" data-try="watching">Set this up</button></div>
+      <div class="try"><h3>Swap places</h3><p>Choose <em>From the tower</em> and look around. How many people can you see, and how clearly?</p><button type="button" data-try="swap">Set this up</button></div>
+      <div class="try"><h3>Check the trick</h3><p>Choose <em>Cutaway</em> and switch on <em>See inside the tower</em>. What does the design hide from the cells, and how?</p><button type="button" data-try="trick">Set this up</button></div>
     </div>
   </section>
 
@@ -149,7 +200,7 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
   // ---------- geometry, grouped by material and layer ----------
   const MATS = {
     stone: 0xD4CCBC, roof: 0xBCB4A6, inner: 0xA89E8E, floor: 0x968C7E, glass: 0xBAC6CC, light: 0xFFFBEE, iron: 0x2C2C30,
-    tower: 0x605E5C, towerIn: 0x1A1A1E, slat: 0x36363A, troof: 0x46484C, paving: 0xC4BEB0, grass: 0x9EA68C, core: 0x1A1A1E,
+    tower: 0x605E5C, towerIn: 0x1A1A1E, slat: 0x36363A, troof: 0x46484C, paving: 0xC4BEB0, grass: 0x9EA68C, core: 0x1A1A1E, mark: 0x8A8170,
   };
   const groups = {};
   function add(mat, layer, pts) {
@@ -194,13 +245,17 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
     for (let s = 0; s < 8; s++) { const sy = wy0 + (wy1 - wy0) * (s + 0.5) / 8; add('slat', 'shell', bandS(RT - 0.03, b0, b1, 0.04, 0.96, sy - 0.045, sy + 0.045)); }
     // outward-facing core (single-sided so the tower view can see out)
     { const A = pt(3.3, b0, y0), B = pt(3.3, b1, y0), C = pt(3.3, b1, y1), D = pt(3.3, b0, y1); add('core', 'shell', [A, D, C, B]); }
-    add('towerIn', 'main', [[0, y0 + 0.02, 0], pt(RT - 0.1, b0, y0 + 0.02), pt(RT - 0.1, b1, y0 + 0.02)]);
-    if (k === TIERS - 1) add('troof', 'main', [pt(RT + 0.35, b0, y1), pt(RT + 0.35, b1, y1), [0, y1 + 2.6, 0]]);
+    add('towerIn', 'tower', [[0, y0 + 0.02, 0], pt(RT - 0.1, b0, y0 + 0.02), pt(RT - 0.1, b1, y0 + 0.02)]);
+    if (k === TIERS - 1) add('troof', 'tower', [pt(RT + 0.35, b0, y1), pt(RT + 0.35, b1, y1), [0, y1 + 2.6, 0]]);
   }
   for (const [r0, r1, m] of [[0, R_IN - 0.3, 'paving'], [R_OUT + 0.3, 60, 'grass'], [60, 400, 'grass']]) for (let j = 0; j < 48; j++) {
     const a0 = j * TAU / 48, a1 = (j + 1) * TAU / 48;
-    add(m, 'main', r0 === 0 ? [[0, 0, 0], pt(r1, a1, 0), pt(r1, a0, 0)] : [pt(r0, a0, 0), pt(r0, a1, 0), pt(r1, a1, 0), pt(r1, a0, 0)]);
+    add(m, 'ground', r0 === 0 ? [[0, 0, 0], pt(r1, a1, 0), pt(r1, a0, 0)] : [pt(r0, a0, 0), pt(r0, a1, 0), pt(r1, a1, 0), pt(r1, a0, 0)]);
   }
+  // footprint of the ring and tower, shown only at the first step (raised clear of the ground)
+  for (let j = 0; j < 48; j++) { const a0 = j * TAU / 48, a1 = (j + 1) * TAU / 48;
+    add('mark', 'footprint', [pt(R_IN - 0.3, a0, 0.03), pt(R_IN - 0.3, a1, 0.03), pt(R_OUT + 0.3, a1, 0.03), pt(R_OUT + 0.3, a0, 0.03)]);
+    add('mark', 'footprint', [[0, 0.03, 0], pt(RT + 0.35, a1, 0.03), pt(RT + 0.35, a0, 0.03)]); }
 
   // ---------- three.js scene ----------
   const viewer = $('viewer');
@@ -216,7 +271,7 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
   scene.add(new THREE.HemisphereLight(0xEEF2F5, 0x8C8A7C, 0.75));
   const sun = new THREE.DirectionalLight(0xFFF6E8, 0.55); sun.position.set(-45, 80, 36); scene.add(sun);
 
-  const layers = { main: [], cut: [], shell: [] }, occluders = [];
+  const layers = { main: [], cut: [], shell: [], tower: [], ground: [], footprint: [] }, occluders = [];
   const matObjs = {};
   for (const key in groups) {
     const g = groups[key], geo = new THREE.BufferGeometry();
@@ -230,7 +285,7 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
       matObjs[g.mat] = mat;
     }
     const mesh = new THREE.Mesh(geo, mat); scene.add(mesh); layers[g.layer].push(mesh);
-    if (g.mat !== 'grass' && g.mat !== 'paving') occluders.push(mesh);
+    if (g.mat !== 'grass' && g.mat !== 'paving' && g.mat !== 'mark') occluders.push(mesh);
   }
   // people as camera-facing silhouettes
   function silhouette(color, seated) {
@@ -247,20 +302,20 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
   // lines of sight
   const lp = []; for (const p of people) lp.push(0, p.pos[1] + 1.6, 0, p.pos[0], p.pos[1] + 1.5, p.pos[2]);
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
-  const sightlines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0xB23A2E, transparent: true, opacity: 0.55 })); sightlines.visible = false; scene.add(sightlines);
+  const sightlines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x8E2219 })); sightlines.visible = false; scene.add(sightlines);
 
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false;
+  controls.enableDamping = !reduceMotion; controls.dampingFactor = 0.08; controls.enablePan = false;
 
   // ---------- parts, labels and text ----------
   const PARTS = [
     { id: 'cells', name: 'Cells', anchor: pt(21.1, 3 * TAU / N, HT * 2 + 1.7), text: 'Cells are arranged in tiers around the outside of the circular building. Each one runs the full depth of the ring, from the outer wall to the side facing the tower.' },
     { id: 'window', name: 'Window', anchor: pt(21.1, amH, HT * H_TIER + 1.7), text: 'Each cell has a window in its outer wall. Daylight from behind makes the person in the cell easy to see from the tower, their outline sharp against the light.' },
-    { id: 'grating', name: 'Iron grating', anchor: pt(15, amH + 0.05, HT * H_TIER + 2.4), text: 'The side of each cell facing the tower is an iron grating rather than a wall, so nothing blocks the view in from the centre.' },
+    { id: 'grating', name: 'Iron grating', anchor: pt(15, amH + 0.05, HT * (TIERS - 1) + 2.4), text: 'The side of each cell facing the tower is an iron grating rather than a wall, so nothing blocks the view in from the centre.' },
     { id: 'person', name: 'A person in a cell', anchor: (() => { const pp = people.find(q => q.cell === H_CELL && q.tier === H_TIER + 1); return [pp.pos[0], pp.pos[1] + 1.1, pp.pos[2]]; })(), text: 'Each cell holds one person, separated from their neighbours by solid walls. They can see the tower, but cannot see whether anyone inside it is looking at them.' },
     { id: 'gap', name: 'Open gap', anchor: pt(9.5, PHI_C + 0.25, 0.3), text: 'An open gap separates the cells from the tower. It keeps the people in the cells at a distance and gives the tower a clear view all round.' },
     { id: 'tower', name: 'Inspection tower', anchor: [0, 15.6, 0], text: 'At the centre stands the inspection tower. From here, a single inspector can see into every cell.' },
-    { id: 'blinds', name: 'Blinds', anchor: pt(RT + 0.1, PHI_C, HT * 2 + 1.7), text: 'The tower is kept dark, with blinds at its windows, so no one in a cell can tell whether anyone is inside. Bentham also used partitions inside the tower so no light shone through.' },
+    { id: 'blinds', name: 'Blinds', anchor: pt(RT + 0.1, PHI_C, HT * 2 + 1.7), needs: () => !state.xray, text: 'The tower is kept dark, with blinds at its windows, so no one in a cell can tell whether anyone is inside. Bentham also used partitions inside the tower so no light shone through.' },
     { id: 'inspector', name: 'Inspector', anchor: pt(1.6, PHI_C, HT + 2.05), red: true, needs: () => state.inspector && state.xray, text: 'The inspector. From a cell, you cannot tell whether this person is here or not, so the only safe assumption is that you are always being watched.' },
   ];
   const labelsEl = $('labels'), partsEl = $('parts');
@@ -272,6 +327,7 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
   }
   let selected = null;
   function select(id) {
+    if (mode === 'tour') { const i = STEPS.findIndex(st => st.part === id); if (i >= 0) goStep(i); return; }
     const p = selected === id ? null : PARTS.find(x => x.id === id); selected = p ? p.id : null;
     for (const q of PARTS) { q.el.setAttribute('aria-pressed', String(q === p)); q.listEl.setAttribute('aria-pressed', String(q === p)); }
     if (!p) { $('mini').hidden = true; return; }
@@ -303,7 +359,8 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
     if (reduceMotion || !camera.userData.ready) { camera.position.copy(to.p); controls.target.copy(to.t); camera.userData.ready = true; anim = null; }
     else anim = { from, to, t0: performance.now(), dur: 1400 };
     matObjs.slat.transparent = name === 'tower'; matObjs.slat.opacity = name === 'tower' ? 0.45 : 1; matObjs.slat.needsUpdate = true;
-    $('hint').textContent = v.orbit ? 'Drag to turn \u00b7 pinch or scroll to zoom' : 'Drag to look around';
+    $('hint').textContent = v.orbit ? 'Drag to turn, or use the buttons below' : 'Drag to look around, or use Turn left and Turn right';
+    $('z-in').disabled = $('z-out').disabled = !v.orbit;
     $('status').textContent = v.text + inspectorNote();
     updateVisibility();
   }
@@ -331,12 +388,114 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
     $('status').textContent = m;
   }
   function updateVisibility() {
-    layers.cut.forEach(m => m.visible = !state.cut);
-    layers.shell.forEach(m => m.visible = !state.xray);
-    inspector.visible = state.inspector && state.view !== 'tower';
+    const g = gates();
+    layers.footprint.forEach(m => m.visible = g.footprint);
+    layers.main.forEach(m => m.visible = g.ring);
+    layers.cut.forEach(m => m.visible = g.ring && !state.cut);
+    layers.tower.forEach(m => m.visible = g.tower);
+    layers.shell.forEach(m => m.visible = g.tower && !state.xray);
+    inspector.visible = g.inspector && state.inspector && state.view !== 'tower';
     sightlines.visible = state.lines;
-    for (const p of people) p.sprite.visible = !(state.cut && p.cut) && !(state.view === 'cell' && p.cell === H_CELL && p.tier === H_TIER);
+    for (const p of people) p.sprite.visible = g.people && !(state.cut && p.cut) && !(state.view === 'cell' && p.cell === H_CELL && p.tier === H_TIER);
   }
+  // ---------- step-by-step build ----------
+  const ORDER = ['cells', 'window', 'grating', 'person', 'tower', 'gap', 'blinds', 'inspector'];
+  const partText = id => PARTS.find(p => p.id === id).text;
+  const STEPS = [
+    { title: 'An inspection house', text: 'In letters written in 1787, Bentham described a circular building: cells in tiers around the outside, an inspection tower at the centre, and an open gap between them.', view: 'overview', show: 0 },
+    { part: 'cells', view: 'overview', show: 1 },
+    { part: 'window', view: 'overview', show: 1 },
+    { part: 'grating', view: 'cutaway', show: 1 },
+    { part: 'person', view: 'cutaway', show: 2 },
+    { part: 'tower', view: 'overview', show: 3 },
+    { part: 'gap', view: 'cutaway', show: 3 },
+    { part: 'blinds', view: 'cutaway', show: 3 },
+    { part: 'inspector', view: 'cutaway', show: 4, xray: true },
+    { title: 'Lines of sight', text: 'Lines of sight run from the tower to all 96 cells.', view: 'overview', show: 4, lines: true },
+    { title: 'The whole building', text: 'That\u2019s the whole building. Choose Explore freely to pick a viewpoint, switch parts on and off, or try the activities below.', view: 'overview', show: 4, all: true },
+  ];
+  for (const st of STEPS) if (st.part) { st.title = PARTS.find(p => p.id === st.part).name; st.text = partText(st.part); st.parts = ORDER.slice(0, ORDER.indexOf(st.part) + 1); }
+  STEPS[0].parts = []; STEPS[9].parts = ORDER; STEPS[10].parts = ORDER;
+  let mode = 'tour', step = 0;
+  function gates() {
+    if (mode === 'free') return { footprint: false, ring: true, people: true, tower: true, inspector: true, parts: null };
+    const s = STEPS[step].show;
+    return { footprint: s === 0, ring: s >= 1, people: s >= 2, tower: s >= 3, inspector: s >= 4, parts: STEPS[step].parts };
+  }
+  const stepsEl = $('steps');
+  STEPS.forEach((st, i) => { const li = document.createElement('li'), b = document.createElement('button'); b.type = 'button'; b.textContent = st.title; b.addEventListener('click', () => goStep(i)); li.appendChild(b); stepsEl.appendChild(li); st.btn = b; });
+  function goStep(i) {
+    step = Math.max(0, Math.min(STEPS.length - 1, i)); const st = STEPS[step];
+    state.inspector = true; state.xray = !!st.xray; state.lines = !!st.lines; state.labels = true;
+    setView(st.view);
+    for (const p of PARTS) { const cur = p.id === st.part; p.el.setAttribute('aria-pressed', String(cur)); p.listEl.setAttribute('aria-pressed', String(cur)); }
+    selected = st.part || null;
+    $('tour-count').textContent = `Step ${step + 1} of ${STEPS.length}`;
+    $('tour-h').textContent = st.title; $('tour-p').textContent = st.text;
+    $('prev').disabled = step === 0;
+    $('next').textContent = step === STEPS.length - 1 ? 'Explore freely' : 'Next';
+    STEPS.forEach((s2, j) => s2.btn.toggleAttribute('aria-current', false) || (j === step && s2.btn.setAttribute('aria-current', 'step')));
+    updateVisibility();
+  }
+  function setMode(m) {
+    mode = m;
+    document.body.classList.toggle('tour-mode', m === 'tour');
+    $('m-tour').setAttribute('aria-pressed', String(m === 'tour')); $('m-free').setAttribute('aria-pressed', String(m === 'free'));
+    $('tour').hidden = m !== 'tour'; $('steps-wrap').hidden = m !== 'tour';
+    $('free').hidden = m !== 'free'; $('free-info').hidden = m !== 'free';
+    $('status').hidden = m !== 'free';
+    if (m === 'tour') { goStep(step); return; }
+    for (const p of PARTS) { p.el.setAttribute('aria-pressed', 'false'); p.listEl.setAttribute('aria-pressed', 'false'); }
+    selected = null; $('mini').hidden = true;
+    Object.assign(state, { inspector: true, xray: false, lines: false, labels: true });
+    $('info-h').textContent = 'An inspection house';
+    $('info-body').innerHTML = '<p>In letters written in 1787, Bentham described a circular building: cells in tiers around the outside, an inspection tower at the centre, and an open gap between them.</p><p>Choose a part below, or tap a label on the model.</p>';
+    for (const k of ['inspector', 'xray', 'cut', 'lines', 'labels']) { const el = $('t-' + k); if (el) el.setAttribute('aria-pressed', String(state[k])); }
+    setView(state.view);
+  }
+  // bring the model and the step text into view together, if either is off screen
+  function showModel() {
+    requestAnimationFrame(() => {
+      const v = $('viewer').getBoundingClientRect(), t = $('tour').getBoundingClientRect();
+      if (v.top < 0 || t.bottom > window.innerHeight) window.scrollBy({ top: v.top - 12, behavior: reduceMotion ? 'auto' : 'smooth' });
+    });
+  }
+  $('m-tour').addEventListener('click', () => { setMode('tour'); showModel(); });
+  $('m-free').addEventListener('click', () => setMode('free'));
+  $('prev').addEventListener('click', () => { goStep(step - 1); showModel(); });
+  $('next').addEventListener('click', () => { if (step === STEPS.length - 1) setMode('free'); else { goStep(step + 1); showModel(); } });
+  stepsEl.addEventListener('click', e => { if (e.target.closest('button')) showModel(); });
+
+  // ---------- turn and zoom without dragging ----------
+  const Y = new THREE.Vector3(0, 1, 0);
+  function turn(dir) {
+    anim = null; const v = VIEWS[state.view], a = dir * Math.PI / 12;
+    if (v.orbit) { const off = camera.position.clone().sub(controls.target).applyAxisAngle(Y, -a); camera.position.copy(controls.target).add(off); }
+    else { const d = controls.target.clone().sub(camera.position).applyAxisAngle(Y, a); controls.target.copy(camera.position).add(d); }
+    controls.update();
+  }
+  function zoom(f) {
+    if (!VIEWS[state.view].orbit) return; anim = null;
+    const off = camera.position.clone().sub(controls.target), d = Math.max(controls.minDistance, Math.min(controls.maxDistance, off.length() * f));
+    camera.position.copy(controls.target).add(off.setLength(d)); controls.update();
+  }
+  $('z-left').addEventListener('click', () => turn(1));
+  $('z-right').addEventListener('click', () => turn(-1));
+  $('z-in').addEventListener('click', () => zoom(0.82));
+  $('z-out').addEventListener('click', () => zoom(1 / 0.82));
+
+  // ---------- things to try: set up the controls they refer to ----------
+  const TRIES = {
+    watching: () => { setView('cell'); setToggle('inspector', true, false); $('status').textContent = 'Set up: the view from a cell, with the inspector in the tower. Now switch Inspector in the tower on and off.'; },
+    swap: () => { setView('tower'); $('status').textContent = 'Set up: the view from the tower. Drag, or use Turn left and Turn right, to look around.'; },
+    trick: () => { setView('cutaway'); setToggle('xray', true, false); $('status').textContent = 'Set up: the cutaway, with the inside of the tower showing.'; },
+  };
+  document.querySelectorAll('[data-try]').forEach(b => b.addEventListener('click', () => {
+    if (mode !== 'free') setMode('free');
+    TRIES[b.dataset.try]();
+    $('viewer').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+  }));
+
   document.querySelectorAll('button.v').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
   for (const key of ['inspector', 'xray', 'cut', 'lines', 'labels']) $('t-' + key).addEventListener('click', () => setToggle(key, !state[key]));
 
@@ -364,7 +523,7 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
     const hint = $('hint'), obstacles = [[hint.offsetLeft, hint.offsetTop, hint.offsetWidth, hint.offsetHeight]], dots = [];
     const cand = [];
     for (const p of PARTS) {
-      const show = state.labels && (!p.needs || p.needs());
+      const g = gates(), show = state.labels && (!p.needs || p.needs()) && (!g.parts || g.parts.includes(p.id));
       tmp.set(...p.anchor); const dist = tmp.distanceTo(camera.position); tmp.project(camera);
       const on = show && tmp.z < 1 && Math.abs(tmp.x) < 0.98 && Math.abs(tmp.y) < 0.98;
       if (on && check) {
@@ -414,7 +573,7 @@ footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 14px;
     controls.update(); renderer.render(scene, camera); placeLabels(); frame++;
     requestAnimationFrame(loop);
   }
-  resize(); setView('overview'); $('loading').remove(); requestAnimationFrame(loop);
+  resize(); setMode('tour'); $('loading').remove(); requestAnimationFrame(loop);
 })();
 </script>
 </body>
